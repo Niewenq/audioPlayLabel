@@ -1,0 +1,19 @@
+<RCC>
+  <qresource prefix="icons">
+    <file>resources/backward.svg</file>
+    <file>resources/currentItemInLoop.svg</file>
+    <file>resources/currentItemOnce.svg</file>
+    <file>resources/forward.svg</file>
+    <file>resources/loop.svg</file>
+    <file>resources/mute.svg</file>
+    <file>resources/next.svg</file>
+    <file>resources/owl.svg</file>
+    <file>resources/pause.svg</file>
+    <file>resources/play.svg</file>
+    <file>resources/pre.svg</file>
+    <file>resources/random.svg</file>
+    <file>resources/sequential.svg</file>
+    <file>resources/stop.svg</file>
+    <file>resources/volume.svg</file>
+  </qresource>
+</RCC>
