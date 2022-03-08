@@ -9,23 +9,31 @@ from os import path
 from os import listdir
 from sys import exit, argv
 from Ui_audioLabelMainWindow import Ui_MainWindow
+from qtoaster import Toast
+from volumeslider import VolumeSliderWidget
 
-from PyQt5.QtGui import QPixmap, QIcon
-from PyQt5.QtCore import pyqtSlot, QUrl
-from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent, QMediaPlaylist
-from PyQt5.QtWidgets import QMessageBox, QMainWindow, QApplication, QSplashScreen, QFileDialog, QActionGroup, QAction
-
+from PySide6.QtGui import QPixmap, QIcon
+from PySide6.QtCore import pyqtSlot, QUrl, QPoint, QEvent
+from PySide6.QtMultimedia import QMediaPlayer, QMediaMetaData, QMediaPlaylist
+from PySide6.QtWidgets import QMainWindow, QApplication, QSplashScreen, QFileDialog, QActionGroup, QAction
 
 class MainWindow(QMainWindow, Ui_MainWindow):
     def __init__(self):
         super(MainWindow, self).__init__()
         self.setupUi(self)
         self.openGLWidgetAudioPlayShow.setupUi()
+        self.toast = Toast()
+        self.volumeSliderWidget = VolumeSliderWidget()
+        self.volumeSliderWidget.volumeSlider.valueChanged.connect(
+            self.on_horizontalSliderVolume_valueChanged)
+
+        self.toolButtonVolume.enterEvent = self.on_toolButtonVolume_enterEvent
+        # self.toolButtonVolume.leaveEvent = self.on_toolButtonVolume_leaveEvent
 
         self.ui = Ui_MainWindow()
 
         self.jsonFilePath = None
-        self.audioFilesPath = []
+        self.audioFilesName = None
         self.audioFolder = None
         self.autoSavePeriod = 0
 
@@ -41,7 +49,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.labelVolume.setText(f"{self.horizontalSliderVolume.value():2} %")
         self.labelCurrentAudioName.setText("")
         self.labelTimeTips.setText("00:00:00/00:00:00")
-        self.__audioDurationTimeStr = ""
+        self.__audioDurationTimeStr = "00:00:00"
 
         self.qActionGroupAutoSave = QActionGroup(self)
         self.qActionGroupAutoSave.addAction(self.action0s)
@@ -99,7 +107,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def __update_statusbar_message(self):
         self.statusbar.showMessage(
-            f"AutoSave:{self.autoSavePeriod}s✦PlayBackRate:{self.playBackRate}✦StepTime:{self.stepTime}s✦PlayBackMode:{self.__playBackModeDict[self.playBackMode][0]}✦AudioFolder:{self.audioFolder}✦JsonFile:{self.jsonFilePath}")
+            f"AutoSave:{self.autoSavePeriod}s✦PlayBackRate:{self.playBackRate}✦StepTime:{self.stepTime}s✦PlayBackMode:{self.__playBackModeDict[self.playBackMode][0]}")
 
     @ pyqtSlot()
     def on_actionOpenJsonFile_triggered(self):
@@ -111,11 +119,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def on_actionOpenAudioFolder_triggered(self):
         folder = QFileDialog.getExistingDirectory(
             self, caption='Choose A Directory')
-        if folder is not None:
-            audioFilesPath = [path.join(folder, file) for file in listdir(
+        if folder:
+            audioFilesName = [file for file in listdir(
                 folder) if re.match(r".+\.wav$|.+\.mp3$|.+\.m4a$", file)]
-            if audioFilesPath:
+            if audioFilesName:
+                audioFilesPath = [path.join(folder, file)
+                                  for file in audioFilesName]
                 self.audioFolder = folder
+                self.audioFilesName = audioFilesName
                 self.mList.clear()
                 for audioFilePath in audioFilesPath:
                     self.mList.addMedia(QMediaContent(
@@ -124,11 +135,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.mPlayer.setPlaylist(self.mList)
                 self.__update_statusbar_message()
             else:
-                QMessageBox.information(
-                    None, "Information", f"No m4a, mp3 or wav files in Folder {folder}.")
+                self.toast.make_text(
+                    pos=QPoint(self.pos().x() + self.geometry().width() // 2,
+                               self.pos().y() + self.geometry().height()), text=f"No m4a, mp3 or wav files in Folder {folder}.")
 
     @ pyqtSlot(int)
-    def on_horizontalSliderVolume_valueChanged(self, value):
+    def on_horizontalSliderVolume_valueChanged(self, value: int):
         self.labelVolume.setText(f"{value:3} %")
         self.mPlayer.setVolume(value)
 
@@ -140,6 +152,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def on_toolButtonPlayPause_clicked(self):
         if self.mPlayer.state() == QMediaPlayer.State.PlayingState:
             self.mPlayer.pause()
+
         else:
             self.mPlayer.play()
 
@@ -155,6 +168,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             icon.addPixmap(QPixmap(":/icons/resources/mute.svg"),
                            QIcon.Normal, QIcon.Off)
         self.toolButtonVolume.setIcon(icon)
+
+    def on_toolButtonVolume_enterEvent(self, event: QEvent):
+        self.volumeSliderWidget.move(
+            self.toolButtonVolume.mapToGlobal(QPoint(0, 0)))
+        self.volumeSliderWidget.show()
+
+    def on_toolButtonVolume_leaveEvent(self, event: QEvent):
+        self.volumeSliderWidget.close()
 
     @pyqtSlot(QAction)
     def on_menuPlayBackRate_triggered(self, action: QAction):
@@ -198,9 +219,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.labelCurrentAudioName.setText(
                 media.resources()[0].url().fileName())
 
-    def on_mPlayer_stateChanged(self, state: QMediaPlayer.State):
+    def on_mPlayer_stateChanged(self, state: QMediaPlayer.PlaybackState):
         icon = self.toolButtonPlayPause.icon()
-        if state == QMediaPlayer.State.PlayingState:
+        if state == QMediaPlayer.PlayingState:
             icon.addPixmap(QPixmap(":/icons/resources/pause.svg"),
                            QIcon.Normal, QIcon.Off)
             self.openGLWidgetAudioPlayShow.start()
@@ -211,7 +232,23 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.toolButtonPlayPause.setIcon(icon)
 
     def on_mPlayer_error(self, error: QMediaPlayer.Error):
-        print(error)
+        fileName = self.audioFilesName[self.mList.currentIndex()]
+        pos = QPoint(self.pos().x() + self.geometry().width() // 2,
+                     self.pos().y() + self.geometry().height())
+        if error == QMediaPlayer.Error.ResourceError:
+            self.toast.make_text(
+                pos, text=f"{fileName} resource couldn't be resolved.")
+        elif error == QMediaPlayer.Error.FormatError:
+            self.toast.make_text(
+                pos, text=f"The format of {fileName} isn't (fully) supported.")
+        elif error == QMediaPlayer.Error.NetworkError:
+            self.toast.make_text(pos, "A network error occurred.")
+        elif error == QMediaPlayer.Error.AccessDeniedError:
+            self.toast.make_text(pos,
+                                 f"There are not the appropriate permissions to play {fileName}.")
+        elif error == QMediaPlayer.Error.ServiceMissingError:
+            self.toast.make_text(pos,
+                                 "A valid playback service was not found, playback cannot proceed.")
 
     @pyqtSlot()
     def on_toolButtonBackward_clicked(self):
@@ -240,7 +277,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     @pyqtSlot()
     def on_toolButtonStop_clicked(self):
         self.mPlayer.stop()
-        self.labelTimeTips.setText("00:00:00/00:00:00")
 
     @pyqtSlot()
     def on_toolButtonPre_clicked(self):
@@ -250,8 +286,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def on_toolButtonNext_clicked(self):
         self.mList.setCurrentIndex(self.mList.nextIndex())
 
-        print(self.__playBackModeDict[self.mList.playbackMode()][0])
-
 
 if __name__ == "__main__":
     app = QApplication(argv)
@@ -260,4 +294,4 @@ if __name__ == "__main__":
     ui = MainWindow()
     ui.show()
     splash.finish(ui)
-    exit(app.exec_())
+    exit(app.exec())

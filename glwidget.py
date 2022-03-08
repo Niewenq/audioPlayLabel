@@ -46,10 +46,11 @@ import sys
 import math
 import random
 
-from PyQt5.QtCore import (QPoint, QPointF, QRectF, QSize, QTimer)
-from PyQt5.QtGui import (QBrush, QColor, QImage, QPainter,
-                         QRadialGradient, QSurfaceFormat)
-from PyQt5.QtWidgets import QApplication, QOpenGLWidget
+from PySide6.QtCore import (QPoint, QPointF, QRectF, QSize, QTimer)
+from PySide6.QtGui import (QBrush, QColor, QPainter,
+                           QRadialGradient, QSurfaceFormat)
+from PySide6.QtWidgets import QApplication
+from PySide6.QtOpenGLWidgets import QOpenGLWidget
 
 import OpenGL.GL as gl
 
@@ -127,29 +128,10 @@ class GLWidget(QOpenGLWidget):
 
     def setupUi(self):
         self.object = 0
-        self.xRot = 0
-        self.yRot = 0
-        self.zRot = 0
         self.bubbles = []
-        self.lastPos = QPoint()
 
         self.setAutoFillBackground(False)
         self.setMinimumSize(200, 200)
-
-    def setXRotation(self, angle):
-        angle = self.normalizeAngle(angle)
-        if angle != self.xRot:
-            self.xRot = angle
-
-    def setYRotation(self, angle):
-        angle = self.normalizeAngle(angle)
-        if angle != self.yRot:
-            self.yRot = angle
-
-    def setZRotation(self, angle):
-        angle = self.normalizeAngle(angle)
-        if angle != self.zRot:
-            self.zRot = angle
 
     def initializeGL(self):
         self.object = self.makeObject()
@@ -175,9 +157,6 @@ class GLWidget(QOpenGLWidget):
             gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
         gl.glLoadIdentity()
         gl.glTranslated(0.0, 0.0, -10.0)
-        gl.glRotated(self.xRot / 16.0, 1.0, 0.0, 0.0)
-        gl.glRotated(self.yRot / 16.0, 0.0, 1.0, 0.0)
-        gl.glRotated(self.zRot / 16.0, 0.0, 0.0, 1.0)
         gl.glCallList(self.object)
 
         gl.glMatrixMode(gl.GL_MODELVIEW)
@@ -206,46 +185,6 @@ class GLWidget(QOpenGLWidget):
         gl.glNewList(genList, gl.GL_COMPILE)
 
         gl.glBegin(gl.GL_QUADS)
-
-        x1 = +0.06
-        y1 = -0.14
-        x2 = +0.14
-        y2 = -0.06
-        x3 = +0.08
-        y3 = +0.00
-        x4 = +0.30
-        y4 = +0.22
-
-        self.quad(x1, y1, x2, y2, y2, x2, y1, x1)
-        self.quad(x3, y3, x4, y4, y4, x4, y3, x3)
-
-        self.extrude(x1, y1, x2, y2)
-        self.extrude(x2, y2, y2, x2)
-        self.extrude(y2, x2, y1, x1)
-        self.extrude(y1, x1, x1, y1)
-        self.extrude(x3, y3, x4, y4)
-        self.extrude(x4, y4, y4, x4)
-        self.extrude(y4, x4, y3, x3)
-
-        NumSectors = 200
-
-        for i in range(NumSectors):
-            angle1 = (i * 2 * math.pi) / NumSectors
-            x5 = 0.30 * math.sin(angle1)
-            y5 = 0.30 * math.cos(angle1)
-            x6 = 0.20 * math.sin(angle1)
-            y6 = 0.20 * math.cos(angle1)
-
-            angle2 = ((i + 1) * 2 * math.pi) / NumSectors
-            x7 = 0.20 * math.sin(angle2)
-            y7 = 0.20 * math.cos(angle2)
-            x8 = 0.30 * math.sin(angle2)
-            y8 = 0.30 * math.cos(angle2)
-
-            self.quad(x5, y5, x6, y6, x7, y7, x8, y8)
-
-            self.extrude(x6, y6, x7, y7)
-            self.extrude(x8, y8, x5, y5)
 
         gl.glEnd()
         gl.glEndList()
@@ -329,5 +268,7 @@ if __name__ == '__main__':
     fmt.setSamples(8)
     QSurfaceFormat.setDefaultFormat(fmt)
     window = GLWidget()
+    window.setupUi()
+    window.start()
     window.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())
