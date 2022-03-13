@@ -16,9 +16,9 @@ class Toast(QtWidgets.QWidget):
         self.toast_text_color = QtCore.Qt.black
         self.setFont(QtGui.QFont('Simsun', 10))
         self.toast_text = ""
-        self.duration = 3
-        self.min_height = 10
-        self.min_width = 10
+        self.duration = 3000
+        self.min_height = self.font().pointSizeF()
+        self.min_width = self.font().pointSize()
 
         self.timer = QtCore.QTimer()
         self.timer.setSingleShot(True)
@@ -26,14 +26,14 @@ class Toast(QtWidgets.QWidget):
 
     def init_UI(self):
         height = self.get_font_size() * 2
-        width = len(self.toast_text) * self.get_font_size() + height
+        width = len(self.toast_text) * self.get_font_size()*0.8
         if height < self.min_height:
             height = self.min_height
-        else:
-            height = self.min_height * 2
         if width < self.min_width:
             width = self.min_width
         self.resize(int(width), int(height))
+        self.move(self.position.x() - width // 2,
+                  self.position.y() - height // 2)
 
     def paintEvent(self, event):
         painter = QtGui.QPainter(self)
@@ -49,6 +49,7 @@ class Toast(QtWidgets.QWidget):
         painter.setPen(pen)
         painter.setFont(self.font())
         self.draw_text(painter)
+        super(Toast, self).paintEvent(event)
 
     def get_font_size(self):
         return self.font().pointSizeF()
@@ -57,10 +58,9 @@ class Toast(QtWidgets.QWidget):
         painter.drawText(QtCore.QRectF(0, 0, self.width(), self.height()),
                          QtCore.Qt.AlignCenter, self.toast_text)
 
-    def toast(self, pos: QtCore.QPointF, toast_text: str, duration: 'int millsecendint' = None, background_color: QtGui.QColor = None):
-        if pos and pos.x() != 0 or pos.y() != 0:
-            self.move(pos.x() - self.width() // 2,
-                      pos.y() - self.height() // 2)
+    def toast(self, pos: QtCore.QPoint, toast_text: str, duration: int = None, background_color: QtGui.QColor = None):
+        if pos:
+            self.position = pos
         if toast_text:
             self.toast_text = toast_text
         if duration:
@@ -78,5 +78,6 @@ if __name__ == '__main__':
 
     app = QtWidgets.QApplication(sys.argv)
     toast = Toast()
-    toast.toast(QtCore.QPointF(1000, 1000), "Test Text!!!", 3000)
+    toast.toast(QtCore.QPoint(1000, 1000),
+                "Test Text!!!", 3000)
     sys.exit(app.exec())

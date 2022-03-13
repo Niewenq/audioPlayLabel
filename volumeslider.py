@@ -18,7 +18,7 @@ class VolumeSliderWidget(QWidget):
         self.volumeSlider.setOrientation(Qt.Orientation.Vertical)
         self.verticalLayout.addWidget(self.volumeSlider)
 
-        self.resize(25, 110)
+        self.resize(40, 110)
         self.volumeSlider.resize(20, 100)
 
         pal = self.palette()

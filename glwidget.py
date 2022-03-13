@@ -43,10 +43,9 @@
 
 
 import sys
-import math
 import random
 
-from PySide6.QtCore import (QPoint, QPointF, QRectF, QSize, QTimer)
+from PySide6.QtCore import (QPointF, QRectF, QSize, QTimer)
 from PySide6.QtGui import (QBrush, QColor, QPainter,
                            QRadialGradient, QSurfaceFormat)
 from PySide6.QtWidgets import QApplication

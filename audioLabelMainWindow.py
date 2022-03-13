@@ -8,14 +8,15 @@ import re
 from os import path
 from os import listdir
 from sys import exit, argv
+from tkinter.messagebox import NO
 from Ui_audioLabelMainWindow import Ui_MainWindow
 from qtoaster import Toast
 from volumeslider import VolumeSliderWidget
 
-from PySide6.QtGui import QPixmap, QIcon
-from PySide6.QtCore import pyqtSlot, QUrl, QPoint, QEvent
-from PySide6.QtMultimedia import QMediaPlayer, QMediaMetaData, QMediaPlaylist
-from PySide6.QtWidgets import QMainWindow, QApplication, QSplashScreen, QFileDialog, QActionGroup, QAction
+from PySide6.QtGui import QPixmap, QIcon, QAction, QActionGroup
+from PySide6.QtCore import QUrl, QPoint, QEvent, Slot
+from PySide6.QtMultimedia import QMediaPlayer, QMediaMetaData, QAudioOutput
+from PySide6.QtWidgets import QMainWindow, QApplication, QSplashScreen, QFileDialog, QToolButton
 
 
 class MainWindow(QMainWindow, Ui_MainWindow):
@@ -23,35 +24,33 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         super(MainWindow, self).__init__()
         self.setupUi(self)
         self.openGLWidgetAudioPlayShow.setupUi()
-        self.toast = Toast()
-        self.volumeSliderWidget = VolumeSliderWidget()
-        self.volumeSliderWidget.volumeSlider.valueChanged.connect(
-            self.on_horizontalSliderVolume_valueChanged)
-
-        self.toolButtonVolume.enterEvent = self.on_toolButtonVolume_enterEvent
-        # self.toolButtonVolume.leaveEvent = self.on_toolButtonVolume_leaveEvent
+        self.__toast = Toast()
 
         self.ui = Ui_MainWindow()
 
-        self.jsonFilePath = None
-        self.audioFilesName = None
-        self.audioFolder = None
-        self.autoSavePeriod = 0
+        self.__jsonFilePath = None
+        self.__audioFilesName = None
+        self.__audioFolder = None
+        self.__recentOpened = None
+        self.__audioFilesPath = None
 
-        self.mPlayer = QMediaPlayer()
-        self.mList = QMediaPlaylist()
-        self.mPlayer.durationChanged.connect(self.on_mPlayer_durationChanged)
-        self.mPlayer.positionChanged.connect(self.on_mPlayer_positionChanged)
-        self.mPlayer.currentMediaChanged.connect(
-            self.on_mPlayer_currentMediaChanged)
-        self.mPlayer.stateChanged.connect(self.on_mPlayer_stateChanged)
-        self.mPlayer.error.connect(self.on_mPlayer_error)
+        self.__current_index = None
 
-        self.labelVolume.setText(f"{self.horizontalSliderVolume.value():2} %")
-        self.labelCurrentAudioName.setText("")
-        self.labelTimeTips.setText("00:00:00/00:00:00")
-        self.__audioDurationTimeStr = "00:00:00"
+        # QMediaPlayer Initilizing
+        self.__audioOutput = QAudioOutput()  # define eralier than  QMediaPlayer
+        self.__mPlayer = QMediaPlayer()
+        # volume settings
+        self.__mPlayer.setAudioOutput(self.__audioOutput)
+        self.__volume_ratio = 100 / self.__audioOutput.volume()
+        self.horizontalSliderVolume.setRange(0, 100)
+        self.horizontalSliderVolume.setValue(100)
+        self.volumeSliderWidget = VolumeSliderWidget()
+        self.volumeSliderWidget.volumeSlider.setRange(0, 100)
+        self.volumeSliderWidget.volumeSlider.setValue(100)
+        self.labelVolume.setText(f"{100:3} %")
+        self.volumeSliderWidget.enterEvent = self.on_volumeSliderWidget
 
+        # autoSave Action Group
         self.qActionGroupAutoSave = QActionGroup(self)
         self.qActionGroupAutoSave.addAction(self.action0s)
         self.qActionGroupAutoSave.addAction(self.action60s)
@@ -59,16 +58,17 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.qActionGroupAutoSave.addAction(self.action180s)
         self.qActionGroupAutoSave.addAction(self.action300s)
         self.action0s.setChecked(True)
-        self.autoSavePeriod = 0
+        self.__autoSavePeriod = 0
 
+        # playBackRate Action Group
         self.qActionGroupPlayBackRate = QActionGroup(self)
         self.qActionGroupPlayBackRate.addAction(self.action0_5)
         self.qActionGroupPlayBackRate.addAction(self.action1_0)
         self.qActionGroupPlayBackRate.addAction(self.action1_5)
         self.qActionGroupPlayBackRate.addAction(self.action2_0)
         self.action1_0.setChecked(True)
-        self.playBackRate = 1.0
 
+        # stepTime Action Group
         self.qActionGroupStepTime = QActionGroup(self)
         self.qActionGroupStepTime.addAction(self.action1s)
         self.qActionGroupStepTime.addAction(self.action3s)
@@ -76,26 +76,29 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.qActionGroupStepTime.addAction(self.action10s)
         self.qActionGroupStepTime.addAction(self.action30s)
         self.action1s.setChecked(True)
-        self.stepTime = 1
+        self.__stepTime = 1
 
-        self.qActionGroupPlayBackMode = QActionGroup(self)
-        self.qActionGroupPlayBackMode.addAction(self.actionCurrentItemOnce)
-        self.qActionGroupPlayBackMode.addAction(self.actionCurrentItemInLoop)
-        self.qActionGroupPlayBackMode.addAction(self.actionSequential)
-        self.qActionGroupPlayBackMode.addAction(self.actionLoop)
-        self.qActionGroupPlayBackMode.addAction(self.actionRandom)
-        self.actionLoop.setChecked(True)
-        self.playBackMode = QMediaPlaylist.PlaybackMode.Loop
-        self.__playBackModeDict = {
-            QMediaPlaylist.PlaybackMode.CurrentItemOnce: ["CurrentItemOnce", ":/icons/resources/currentItemOnce.svg", self.actionCurrentItemOnce],
-            QMediaPlaylist.PlaybackMode.CurrentItemInLoop: ["CurrentItemInLoop", ":/icons/resources/currentItemInLoop.svg", self.actionCurrentItemInLoop],
-            QMediaPlaylist.PlaybackMode.Sequential: ["Sequential", ":/icons/resources/sequential.svg", self.actionSequential],
-            QMediaPlaylist.PlaybackMode.Loop: ["Loop", ":/icons/resources/loop.svg", self.actionLoop],
-            QMediaPlaylist.PlaybackMode.Random: ["Random", ":/icons/resources/random.svg", self.actionRandom],
-        }
+        self.actionOpenJsonFile.triggered.connect(
+            self.on_actionOpenJsonFile_triggered)
+        self.actionOpenAudioFolder.triggered.connect(
+            self.on_actionOpenAudioFolder_triggered)
 
-        self.horizontalSliderVolume.setRange(0, 100)
-        self.horizontalSliderVolume.setValue(100)
+        self.menuPlayBackRate.triggered.connect(
+            self.on_menuPlayBackRate_triggered)
+        self.menuStepTime.triggered.connect(self.on_menuStepTime_triggered)
+        self.menuAutoSave.triggered.connect(self.on_menuAutoSave_triggered)
+
+        self.__mPlayer.playbackStateChanged.connect(
+            self.on_mPlayer_playbackStateChanged)
+        self.__mPlayer.errorOccurred.connect(self.on_mPlayer_errorOccurred)
+
+        self.toolButtonPlayPause.clicked.connect(
+            self.on_toolButtonPlayPause_clicked)
+        self.toolButtonVolume.enterEvent = self.on_toolButtonVolume_enterEvent
+        self.toolButtonVolume.leaveEvent = self.on_toolButtonVolume_leaveEvent
+
+        self.horizontalSliderVolume.valueChanged.connect(
+            self.on_horizontalSliderVolume_valueChanged)
 
         self.__update_statusbar_message()
 
@@ -108,15 +111,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def __update_statusbar_message(self):
         self.statusbar.showMessage(
-            f"AutoSave:{self.autoSavePeriod}s✦PlayBackRate:{self.playBackRate}✦StepTime:{self.stepTime}s✦PlayBackMode:{self.__playBackModeDict[self.playBackMode][0]}")
+            f"AutoSave:{self.__autoSavePeriod:3d}s✦PlayBackRate:{self.__mPlayer.playbackRate()}✦StepTime:{self.__stepTime:2d}s")
 
-    @ pyqtSlot()
+    @Slot()
     def on_actionOpenJsonFile_triggered(self):
-        self.jsonFilePath, _ = QFileDialog.getOpenFileName(parent=self, caption='Open JSON Files',
-                                                           filter='JSON Files(*.json)')
-        self.__update_statusbar_message()
+        self.__jsonFilePath, _ = QFileDialog.getOpenFileName(parent=self, caption='Open JSON Files',
+                                                             filter='JSON Files(*.json)')
 
-    @ pyqtSlot()
+    @Slot()
     def on_actionOpenAudioFolder_triggered(self):
         folder = QFileDialog.getExistingDirectory(
             self, caption='Choose A Directory')
@@ -124,168 +126,85 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             audioFilesName = [file for file in listdir(
                 folder) if re.match(r".+\.wav$|.+\.mp3$|.+\.m4a$", file)]
             if audioFilesName:
-                audioFilesPath = [path.join(folder, file)
-                                  for file in audioFilesName]
-                self.audioFolder = folder
-                self.audioFilesName = audioFilesName
-                self.mList.clear()
-                for audioFilePath in audioFilesPath:
-                    self.mList.addMedia(QMediaContent(
-                        QUrl.fromLocalFile(audioFilePath)))
-                self.mList.setPlaybackMode(self.playBackMode)
-                self.mPlayer.setPlaylist(self.mList)
-                self.__update_statusbar_message()
+                self.__audioFilesPath = [
+                    folder + '/' + file for file in audioFilesName]
+                self.__audioFolder = folder
+                self.__audioFilesName = audioFilesName
+                self.__current_index = 0
             else:
-                self.toast.make_text(
+                self.__toast.toast(
                     pos=QPoint(self.pos().x() + self.geometry().width() // 2,
-                               self.pos().y() + self.geometry().height()), text=f"No m4a, mp3 or wav files in Folder {folder}.")
+                               self.pos().y() + self.geometry().height()), toast_text=f"No m4a, mp3 or wav files in Folder {folder}.")
 
-    @ pyqtSlot(int)
-    def on_horizontalSliderVolume_valueChanged(self, value: int):
-        self.labelVolume.setText(f"{value:3} %")
-        self.mPlayer.setVolume(value)
+    @Slot(QAction)
+    def on_menuPlayBackRate_triggered(self, action: QAction):
+        self.__mPlayer.setPlaybackRate(float(action.text()))
+        self.__update_statusbar_message()
 
-    @ pyqtSlot()
-    def on_actionExit_triggered(self):
-        QApplication.instance().quit()
+    @Slot(QAction)
+    def on_menuStepTime_triggered(self, action: QAction):
+        self.__stepTime = int(re.match(r"^\d+", action.text()).group())
+        self.__update_statusbar_message()
 
-    @pyqtSlot()
+    @Slot(QAction)
+    def on_menuAutoSave_triggered(self, action: QAction):
+        self.__autoSavePeriod = int(re.match(r"^\d+", action.text()).group())
+        self.__update_statusbar_message()
+
+    @Slot()
     def on_toolButtonPlayPause_clicked(self):
-        if self.mPlayer.state() == QMediaPlayer.State.PlayingState:
-            self.mPlayer.pause()
-
+        if self.__mPlayer.mediaStatus() == QMediaPlayer.NoMedia:
+            if self.__audioFilesPath:
+                self.__mPlayer.setSource(
+                    self.__audioFilesPath[self.__current_index])
+                self.__mPlayer.play()
+            else:
+                self.__toast.toast(
+                    pos=QPoint(self.pos().x() + self.geometry().width() // 2,
+                               self.pos().y() + self.geometry().height()), toast_text="Please choose audio files before play.")
         else:
-            self.mPlayer.play()
-
-    @pyqtSlot()
-    def on_toolButtonVolume_clicked(self):
-        icon = self.toolButtonVolume.icon()
-        if self.mPlayer.isMuted():
-            self.mPlayer.setMuted(False)
-            icon.addPixmap(QPixmap(":/icons/resources/volume.svg"),
-                           QIcon.Normal, QIcon.Off)
-        else:
-            self.mPlayer.setMuted(True)
-            icon.addPixmap(QPixmap(":/icons/resources/mute.svg"),
-                           QIcon.Normal, QIcon.Off)
-        self.toolButtonVolume.setIcon(icon)
+            if self.__mPlayer.playbackState() == QMediaPlayer.PlayingState:
+                self.__mPlayer.pause()
+            else:
+                self.__mPlayer.play()
 
     def on_toolButtonVolume_enterEvent(self, event: QEvent):
-        self.volumeSliderWidget.move(
-            self.toolButtonVolume.mapToGlobal(QPoint(0, 0)))
+        pos = self.toolButtonVolume.mapToGlobal(QPoint(0, 0))
+        a = self.toolButtonVolume.geometry()
+        b = self.volumeSliderWidget.geometry()
+
+        pos.setX(pos.x() + (self.toolButtonVolume.geometry().width() // 2 -
+                            self.volumeSliderWidget.geometry().width() // 2))
+
+        pos.setY(pos.y() - self.volumeSliderWidget.geometry().height() + 1)
+        self.volumeSliderWidget.move(pos)
         self.volumeSliderWidget.show()
 
     def on_toolButtonVolume_leaveEvent(self, event: QEvent):
         self.volumeSliderWidget.close()
 
-    @pyqtSlot(QAction)
-    def on_menuPlayBackRate_triggered(self, action: QAction):
-        self.playBackRate = float(action.text())
-        self.mPlayer.setPlaybackRate(self.playBackRate)
-        self.__update_statusbar_message()
-
-    @pyqtSlot(QAction)
-    def on_menuAutoSave_triggered(self, action: QAction):
-        self.autoSavePeriod = int(re.match(r"\d+", action.text()).group())
-        self.__update_statusbar_message()
-
-    @pyqtSlot(QAction)
-    def on_menuPlayBackMode_triggered(self, action: QAction):
-        self.playBackMode = int(re.match(r"\d+", action.text()).group())
-        self.mList.setPlaybackMode(self.playBackMode)
-        icon = self.toolButtonPlayBackMode.icon()
-        icon.addPixmap(QPixmap(self.__playBackModeDict[self.playBackMode][1]),
-                       QIcon.Normal, QIcon.Off)
-        self.toolButtonPlayBackMode.setIcon(icon)
-        self.__update_statusbar_message()
-
-    @pyqtSlot(QAction)
-    def on_menuStepTime_triggered(self, action: QAction):
-        self.stepTime = int(re.match(r"\d+", action.text()).group())
-        self.__update_statusbar_message()
-
-    def on_mPlayer_durationChanged(self, duration: int):
-        self.horizontalSliderRateOfProcess.setRange(0, duration)
-        self.horizontalSliderRateOfProcess.setValue(0)
-        self.__audioDurationTimeStr = MainWindow.millisecondsToFormatedString(
-            duration)
-
-    def on_mPlayer_positionChanged(self, position: int):
-        self.horizontalSliderRateOfProcess.setValue(position)
-        self.labelTimeTips.setText(
-            f"{MainWindow.millisecondsToFormatedString(position)}/{self.__audioDurationTimeStr}")
-
-    def on_mPlayer_currentMediaChanged(self, media: QMediaContent):
-        if media.resources():
-            self.labelCurrentAudioName.setText(
-                media.resources()[0].url().fileName())
-
-    def on_mPlayer_stateChanged(self, state: QMediaPlayer.PlaybackState):
-        icon = self.toolButtonPlayPause.icon()
-        if state == QMediaPlayer.PlayingState:
-            icon.addPixmap(QPixmap(":/icons/resources/pause.svg"),
-                           QIcon.Normal, QIcon.Off)
+    @ Slot(QMediaPlayer.PlaybackState)
+    def on_mPlayer_playbackStateChanged(self, newState: QMediaPlayer.PlaybackState):
+        if newState == QMediaPlayer.PlayingState:
             self.openGLWidgetAudioPlayShow.start()
+            self.toolButtonPlayPause.setIcon(
+                QPixmap(":/icons/resources/pause.svg"))
         else:
-            icon.addPixmap(
-                QPixmap(":/icons/resources/play.svg"))
             self.openGLWidgetAudioPlayShow.stop()
-        self.toolButtonPlayPause.setIcon(icon)
+            self.toolButtonPlayPause.setIcon(
+                QPixmap(":/icons/resources/play.svg"))
 
-    def on_mPlayer_error(self, error: QMediaPlayer.Error):
-        fileName = self.audioFilesName[self.mList.currentIndex()]
-        pos = QPoint(self.pos().x() + self.geometry().width() // 2,
-                     self.pos().y() + self.geometry().height())
-        if error == QMediaPlayer.Error.ResourceError:
-            self.toast.make_text(
-                pos, text=f"{fileName} resource couldn't be resolved.")
-        elif error == QMediaPlayer.Error.FormatError:
-            self.toast.make_text(
-                pos, text=f"The format of {fileName} isn't (fully) supported.")
-        elif error == QMediaPlayer.Error.NetworkError:
-            self.toast.make_text(pos, "A network error occurred.")
-        elif error == QMediaPlayer.Error.AccessDeniedError:
-            self.toast.make_text(pos,
-                                 f"There are not the appropriate permissions to play {fileName}.")
-        elif error == QMediaPlayer.Error.ServiceMissingError:
-            self.toast.make_text(pos,
-                                 "A valid playback service was not found, playback cannot proceed.")
+    @ Slot(QMediaPlayer.Error, str)
+    def on_mPlayer_errorOccurred(self, error: QMediaPlayer.Error, errorString: str):
+        self.__toast.toast(
+            pos=QPoint(self.pos().x() + self.geometry().width() // 2,
+                       self.pos().y() + self.geometry().height()), toast_text=errorString)
 
-    @pyqtSlot()
-    def on_toolButtonBackward_clicked(self):
-        self.mPlayer.setPosition(
-            self.mPlayer.position() - self.stepTime * 1000)
-
-    @pyqtSlot()
-    def on_toolButtonForward_clicked(self):
-        self.mPlayer.setPosition(
-            self.mPlayer.position() + self.stepTime * 1000)
-
-    @pyqtSlot()
-    def on_toolButtonPlayBackMode_clicked(self):
-        self.playBackMode = (self.playBackMode + 1) % 5
-        self.mList.setPlaybackMode(self.playBackMode)
-
-        self.__playBackModeDict[self.playBackMode][2].setChecked(True)
-
-        icon = self.toolButtonPlayBackMode.icon()
-        icon.addPixmap(QPixmap(self.__playBackModeDict[self.playBackMode][1]),
-                       QIcon.Normal, QIcon.Off)
-        self.toolButtonPlayBackMode.setIcon(icon)
-
-        self.__update_statusbar_message()
-
-    @pyqtSlot()
-    def on_toolButtonStop_clicked(self):
-        self.mPlayer.stop()
-
-    @pyqtSlot()
-    def on_toolButtonPre_clicked(self):
-        self.mList.setCurrentIndex(self.mList.previousIndex())
-
-    @pyqtSlot()
-    def on_toolButtonNext_clicked(self):
-        self.mList.setCurrentIndex(self.mList.nextIndex())
+    @ Slot(int)
+    def on_horizontalSliderVolume_valueChanged(self, value: int):
+        self.__audioOutput.setVolume(value / self.__volume_ratio)
+        self.labelVolume.setText(f"{value:3} %")
+        self.volumeSliderWidget.volumeSlider.setValue(value)
 
 
 if __name__ == "__main__":

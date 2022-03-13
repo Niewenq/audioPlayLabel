@@ -21,13 +21,14 @@ from PySide6.QtWidgets import (QApplication, QHBoxLayout, QLabel, QListWidget,
     QListWidgetItem, QMainWindow, QMenu, QMenuBar,
     QSizePolicy, QSlider, QSpacerItem, QSplitter,
     QStatusBar, QToolButton, QVBoxLayout, QWidget)
+from glwidget import GLWidget
 import resources_rc
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         if not MainWindow.objectName():
             MainWindow.setObjectName(u"MainWindow")
-        MainWindow.resize(900, 455)
+        MainWindow.resize(838, 569)
         icon = QIcon()
         icon.addFile(u":/icons/resources/owl.svg", QSize(), QIcon.Normal, QIcon.Off)
         MainWindow.setWindowIcon(icon)
@@ -168,7 +169,7 @@ class Ui_MainWindow(object):
 
         self.verticalLayoutAudioMainArea.addWidget(self.labelCurrentAudioName)
 
-        self.openGLWidgetAudioPlayShow = QOpenGLWidget(self.layoutWidget)
+        self.openGLWidgetAudioPlayShow = GLWidget(self.layoutWidget)
         self.openGLWidgetAudioPlayShow.setObjectName(u"openGLWidgetAudioPlayShow")
 
         self.verticalLayoutAudioMainArea.addWidget(self.openGLWidgetAudioPlayShow)
@@ -303,7 +304,7 @@ class Ui_MainWindow(object):
         MainWindow.setCentralWidget(self.centralwidgetMain)
         self.menubar = QMenuBar(MainWindow)
         self.menubar.setObjectName(u"menubar")
-        self.menubar.setGeometry(QRect(0, 0, 900, 22))
+        self.menubar.setGeometry(QRect(0, 0, 838, 22))
         self.menuFile = QMenu(self.menubar)
         self.menuFile.setObjectName(u"menuFile")
         self.menuOpenRecently = QMenu(self.menuFile)
@@ -318,8 +319,6 @@ class Ui_MainWindow(object):
         self.menuStepTime.setObjectName(u"menuStepTime")
         self.menuPlayBackRate = QMenu(self.menuSettings)
         self.menuPlayBackRate.setObjectName(u"menuPlayBackRate")
-        self.menuPlayBackMode = QMenu(self.menuSettings)
-        self.menuPlayBackMode.setObjectName(u"menuPlayBackMode")
         MainWindow.setMenuBar(self.menubar)
         self.statusbar = QStatusBar(MainWindow)
         self.statusbar.setObjectName(u"statusbar")
@@ -346,7 +345,6 @@ class Ui_MainWindow(object):
         self.menuHelp.addAction(self.actionAbout)
         self.menuSettings.addAction(self.menuStepTime.menuAction())
         self.menuSettings.addAction(self.menuPlayBackRate.menuAction())
-        self.menuSettings.addAction(self.menuPlayBackMode.menuAction())
         self.menuStepTime.addAction(self.action1s)
         self.menuStepTime.addAction(self.action3s)
         self.menuStepTime.addAction(self.action5s)
@@ -356,15 +354,10 @@ class Ui_MainWindow(object):
         self.menuPlayBackRate.addAction(self.action1_0)
         self.menuPlayBackRate.addAction(self.action1_5)
         self.menuPlayBackRate.addAction(self.action2_0)
-        self.menuPlayBackMode.addAction(self.actionCurrentItemOnce)
-        self.menuPlayBackMode.addAction(self.actionCurrentItemInLoop)
-        self.menuPlayBackMode.addAction(self.actionSequential)
-        self.menuPlayBackMode.addAction(self.actionLoop)
-        self.menuPlayBackMode.addAction(self.actionRandom)
 
         self.retranslateUi(MainWindow)
 
-        QMetaObject.connectSlotsByName(MainWindow)
+        # QMetaObject.connectSlotsByName(MainWindow)
     # setupUi
 
     def retranslateUi(self, MainWindow):
@@ -466,6 +459,5 @@ class Ui_MainWindow(object):
         self.menuSettings.setTitle(QCoreApplication.translate("MainWindow", u"Settings", None))
         self.menuStepTime.setTitle(QCoreApplication.translate("MainWindow", u"Step Time", None))
         self.menuPlayBackRate.setTitle(QCoreApplication.translate("MainWindow", u"Play Back Rate", None))
-        self.menuPlayBackMode.setTitle(QCoreApplication.translate("MainWindow", u"Play Back Mode", None))
     # retranslateUi
 

@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>900</width>
-    <height>455</height>
+    <width>838</width>
+    <height>569</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -258,6 +258,9 @@
             <property name="cursor">
              <cursorShape>PointingHandCursor</cursorShape>
             </property>
+            <property name="value">
+             <number>99</number>
+            </property>
             <property name="orientation">
              <enum>Qt::Horizontal</enum>
             </property>
@@ -296,7 +299,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>900</width>
+     <width>838</width>
      <height>22</height>
     </rect>
    </property>
@@ -359,19 +362,8 @@
      <addaction name="action1_5"/>
      <addaction name="action2_0"/>
     </widget>
-    <widget class="QMenu" name="menuPlayBackMode">
-     <property name="title">
-      <string>Play Back Mode</string>
-     </property>
-     <addaction name="actionCurrentItemOnce"/>
-     <addaction name="actionCurrentItemInLoop"/>
-     <addaction name="actionSequential"/>
-     <addaction name="actionLoop"/>
-     <addaction name="actionRandom"/>
-    </widget>
     <addaction name="menuStepTime"/>
     <addaction name="menuPlayBackRate"/>
-    <addaction name="menuPlayBackMode"/>
    </widget>
    <addaction name="menuFile"/>
    <addaction name="menuSettings"/>
