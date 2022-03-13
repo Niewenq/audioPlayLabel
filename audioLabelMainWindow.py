@@ -17,6 +17,7 @@ from PySide6.QtCore import pyqtSlot, QUrl, QPoint, QEvent
 from PySide6.QtMultimedia import QMediaPlayer, QMediaMetaData, QMediaPlaylist
 from PySide6.QtWidgets import QMainWindow, QApplication, QSplashScreen, QFileDialog, QActionGroup, QAction
 
+
 class MainWindow(QMainWindow, Ui_MainWindow):
     def __init__(self):
         super(MainWindow, self).__init__()
