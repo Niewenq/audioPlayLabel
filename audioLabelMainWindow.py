@@ -5,16 +5,14 @@
 
 
 import re
-from os import path
 from os import listdir
 from sys import exit, argv
-from tkinter.messagebox import NO
 from Ui_audioLabelMainWindow import Ui_MainWindow
 from qtoaster import Toast
 from volumeslider import VolumeSliderWidget
 
-from PySide6.QtGui import QPixmap, QIcon, QAction, QActionGroup
-from PySide6.QtCore import QUrl, QPoint, QEvent, Slot
+from PySide6.QtGui import QPixmap, QAction, QActionGroup, QCursor, QMouseEvent
+from PySide6.QtCore import QPoint, QEvent, Slot, Qt, QEvent
 from PySide6.QtMultimedia import QMediaPlayer, QMediaMetaData, QAudioOutput
 from PySide6.QtWidgets import QMainWindow, QApplication, QSplashScreen, QFileDialog, QToolButton
 
@@ -47,8 +45,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.volumeSliderWidget = VolumeSliderWidget()
         self.volumeSliderWidget.volumeSlider.setRange(0, 100)
         self.volumeSliderWidget.volumeSlider.setValue(100)
-        self.labelVolume.setText(f"{100:3} %")
-        self.volumeSliderWidget.enterEvent = self.on_volumeSliderWidget
+        self.labelVolume.setText(f"{100:<4d} %")
+        self.volumeSliderWidget.leaveEvent = self.on_volumeSliderWidget_leaveEvent
+        self.volumeSliderWidget.enterEvent = self.on_volumeSliderWidget_enterEvent
 
         # autoSave Action Group
         self.qActionGroupAutoSave = QActionGroup(self)
@@ -99,6 +98,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         self.horizontalSliderVolume.valueChanged.connect(
             self.on_horizontalSliderVolume_valueChanged)
+        self.volumeSliderWidget.volumeSlider.valueChanged.connect(
+            self.on_volumeSlider_valueChanged)
 
         self.__update_statusbar_message()
 
@@ -170,18 +171,32 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def on_toolButtonVolume_enterEvent(self, event: QEvent):
         pos = self.toolButtonVolume.mapToGlobal(QPoint(0, 0))
-        a = self.toolButtonVolume.geometry()
-        b = self.volumeSliderWidget.geometry()
-
         pos.setX(pos.x() + (self.toolButtonVolume.geometry().width() // 2 -
                             self.volumeSliderWidget.geometry().width() // 2))
 
-        pos.setY(pos.y() - self.volumeSliderWidget.geometry().height() + 1)
+        pos.setY(pos.y() - self.volumeSliderWidget.geometry().height())
         self.volumeSliderWidget.move(pos)
         self.volumeSliderWidget.show()
+        self.toolButtonVolumeTopLeft = self.toolButtonVolume.mapToGlobal(
+            QPoint(0, 0))
+        toolButtonVolumeGeometry = self.toolButtonVolume.geometry()
+        self.toolButtonVolumeBottomRight = self.toolButtonVolume.mapToGlobal(
+            QPoint(toolButtonVolumeGeometry.width(), toolButtonVolumeGeometry.height()))
+        self.volumeSliderWidgetTopLeft = self.volumeSliderWidget.mapToGlobal(
+            QPoint(0, 0))
+        volumeSliderWidgetGeometry = self.volumeSliderWidget.geometry()
+        self.volumeSliderWidgetBottomRight = self.volumeSliderWidget.mapToGlobal(
+            QPoint(volumeSliderWidgetGeometry.width(), volumeSliderWidgetGeometry.height()))
+        self.setMouseTracking(True)
 
     def on_toolButtonVolume_leaveEvent(self, event: QEvent):
         self.volumeSliderWidget.close()
+
+    def on_volumeSliderWidget_leaveEvent(self, event: QEvent):
+        self.volumeSliderWidget.close()
+
+    def on_volumeSliderWidget_enterEvent(self, event: QEvent):
+        self.volumeSliderWidget.show()
 
     @ Slot(QMediaPlayer.PlaybackState)
     def on_mPlayer_playbackStateChanged(self, newState: QMediaPlayer.PlaybackState):
@@ -203,8 +218,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     @ Slot(int)
     def on_horizontalSliderVolume_valueChanged(self, value: int):
         self.__audioOutput.setVolume(value / self.__volume_ratio)
-        self.labelVolume.setText(f"{value:3} %")
+        self.labelVolume.setText(f"{value:<4d} %")
         self.volumeSliderWidget.volumeSlider.setValue(value)
+
+    @Slot(int)
+    def on_volumeSlider_valueChanged(self, value: int):
+        self.__audioOutput.setVolume(value / self.__volume_ratio)
+        self.labelVolume.setText(f"{value:<4d} %")
+        self.horizontalSliderVolume.setValue(value)
 
 
 if __name__ == "__main__":

@@ -280,6 +280,7 @@ class Ui_MainWindow(object):
         self.horizontalSliderVolume = QSlider(self.layoutWidget)
         self.horizontalSliderVolume.setObjectName(u"horizontalSliderVolume")
         self.horizontalSliderVolume.setCursor(QCursor(Qt.PointingHandCursor))
+        self.horizontalSliderVolume.setValue(99)
         self.horizontalSliderVolume.setOrientation(Qt.Horizontal)
 
         self.horizontalLayoutAudioOperationArea.addWidget(self.horizontalSliderVolume)

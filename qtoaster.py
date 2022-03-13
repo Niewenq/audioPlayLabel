@@ -59,6 +59,7 @@ class Toast(QtWidgets.QWidget):
                          QtCore.Qt.AlignCenter, self.toast_text)
 
     def toast(self, pos: QtCore.QPoint, toast_text: str, duration: int = None, background_color: QtGui.QColor = None):
+        self.close()
         if pos:
             self.position = pos
         if toast_text:
