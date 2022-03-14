@@ -10,14 +10,16 @@ from sys import exit, argv
 from Ui_audioLabelMainWindow import Ui_MainWindow
 from qtoaster import Toast
 from volumeslider import VolumeSliderWidget
+from time import sleep
 
-from PySide6.QtGui import QPixmap, QAction, QActionGroup, QCursor, QMouseEvent
-from PySide6.QtCore import QPoint, QEvent, Slot, Qt, QEvent
-from PySide6.QtMultimedia import QMediaPlayer, QMediaMetaData, QAudioOutput
-from PySide6.QtWidgets import QMainWindow, QApplication, QSplashScreen, QFileDialog, QToolButton
+from PySide6.QtGui import QPixmap, QAction, QActionGroup, QCursor
+from PySide6.QtCore import QPoint, QEvent, Slot, QEvent, Signal, QTimer
+from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput
+from PySide6.QtWidgets import QMainWindow, QApplication, QSplashScreen, QFileDialog
 
 
 class MainWindow(QMainWindow, Ui_MainWindow):
+
     def __init__(self):
         super(MainWindow, self).__init__()
         self.setupUi(self)
@@ -46,8 +48,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.volumeSliderWidget.volumeSlider.setRange(0, 100)
         self.volumeSliderWidget.volumeSlider.setValue(100)
         self.labelVolume.setText(f"{100:<4d} %")
-        self.volumeSliderWidget.leaveEvent = self.on_volumeSliderWidget_leaveEvent
-        self.volumeSliderWidget.enterEvent = self.on_volumeSliderWidget_enterEvent
+        self.volumeSliderWidgetTimer = QTimer()
+        self.volumeSliderWidgetTimer.timeout.connect(
+            self.on_volumeSliderWidgetTimer_timeout)
+        # self.volumeSliderWidget.leaveEvent = self.on_volumeSliderWidget_leaveEvent
+        # self.volumeSliderWidget.enterEvent = self.on_volumeSliderWidget_enterEvent
 
         # autoSave Action Group
         self.qActionGroupAutoSave = QActionGroup(self)
@@ -94,7 +99,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.toolButtonPlayPause.clicked.connect(
             self.on_toolButtonPlayPause_clicked)
         self.toolButtonVolume.enterEvent = self.on_toolButtonVolume_enterEvent
-        self.toolButtonVolume.leaveEvent = self.on_toolButtonVolume_leaveEvent
+        # self.toolButtonVolume.leaveEvent = self.on_toolButtonVolume_leaveEvent
 
         self.horizontalSliderVolume.valueChanged.connect(
             self.on_horizontalSliderVolume_valueChanged)
@@ -170,33 +175,36 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.__mPlayer.play()
 
     def on_toolButtonVolume_enterEvent(self, event: QEvent):
-        pos = self.toolButtonVolume.mapToGlobal(QPoint(0, 0))
-        pos.setX(pos.x() + (self.toolButtonVolume.geometry().width() // 2 -
-                            self.volumeSliderWidget.geometry().width() // 2))
+        if not self.volumeSliderWidget.isVisible():
+            pos = self.toolButtonVolume.mapToGlobal(QPoint(0, 0))
+            pos.setX(pos.x() + (self.toolButtonVolume.geometry().width() // 2 -
+                                self.volumeSliderWidget.geometry().width() // 2))
 
-        pos.setY(pos.y() - self.volumeSliderWidget.geometry().height())
-        self.volumeSliderWidget.move(pos)
-        self.volumeSliderWidget.show()
-        self.toolButtonVolumeTopLeft = self.toolButtonVolume.mapToGlobal(
-            QPoint(0, 0))
-        toolButtonVolumeGeometry = self.toolButtonVolume.geometry()
-        self.toolButtonVolumeBottomRight = self.toolButtonVolume.mapToGlobal(
-            QPoint(toolButtonVolumeGeometry.width(), toolButtonVolumeGeometry.height()))
-        self.volumeSliderWidgetTopLeft = self.volumeSliderWidget.mapToGlobal(
-            QPoint(0, 0))
-        volumeSliderWidgetGeometry = self.volumeSliderWidget.geometry()
-        self.volumeSliderWidgetBottomRight = self.volumeSliderWidget.mapToGlobal(
-            QPoint(volumeSliderWidgetGeometry.width(), volumeSliderWidgetGeometry.height()))
-        self.setMouseTracking(True)
+            pos.setY(pos.y() - self.volumeSliderWidget.geometry().height())
+            self.volumeSliderWidget.move(pos)
+            self.volumeSliderWidget.show()
 
-    def on_toolButtonVolume_leaveEvent(self, event: QEvent):
-        self.volumeSliderWidget.close()
+            self.toolButtonVolumeTopLeft = self.toolButtonVolume.mapToGlobal(
+                QPoint(0, 0))
+            toolButtonVolumeGeometry = self.toolButtonVolume.geometry()
+            self.toolButtonVolumeBottomRight = self.toolButtonVolume.mapToGlobal(
+                QPoint(toolButtonVolumeGeometry.width(), toolButtonVolumeGeometry.height()))
+            self.volumeSliderWidgetTopLeft = self.volumeSliderWidget.mapToGlobal(
+                QPoint(0, 0))
+            volumeSliderWidgetGeometry = self.volumeSliderWidget.geometry()
+            self.volumeSliderWidgetBottomRight = self.volumeSliderWidget.mapToGlobal(
+                QPoint(volumeSliderWidgetGeometry.width(), volumeSliderWidgetGeometry.height()))
 
-    def on_volumeSliderWidget_leaveEvent(self, event: QEvent):
-        self.volumeSliderWidget.close()
+            self.volumeSliderWidgetTimer.start(300)
 
-    def on_volumeSliderWidget_enterEvent(self, event: QEvent):
-        self.volumeSliderWidget.show()
+    @Slot()
+    def on_volumeSliderWidgetTimer_timeout(self):
+        x = QCursor.pos().x()
+        y = QCursor.pos().y()
+
+        if not ((self.toolButtonVolumeTopLeft.x() <= x <= self.toolButtonVolumeBottomRight.x() and self.toolButtonVolumeTopLeft.y() <= y <= self.toolButtonVolumeBottomRight.y()) or (self.volumeSliderWidgetTopLeft.x() <= x <= self.volumeSliderWidgetBottomRight.x() and self.volumeSliderWidgetTopLeft.y() <= y <= self.volumeSliderWidgetBottomRight.y())):
+            self.volumeSliderWidget.close()
+            self.volumeSliderWidgetTimer.stop()
 
     @ Slot(QMediaPlayer.PlaybackState)
     def on_mPlayer_playbackStateChanged(self, newState: QMediaPlayer.PlaybackState):
