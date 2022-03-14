@@ -212,13 +212,6 @@ class GLWidget(QOpenGLWidget):
         gl.glVertex3d(x2, y2, -0.05)
         gl.glVertex3d(x1, y1, -0.05)
 
-    def normalizeAngle(self, angle):
-        while angle < 0:
-            angle += 360 * 16
-        while angle > 360 * 16:
-            angle -= 360 * 16
-        return angle
-
     def createBubbles(self, number):
         for i in range(number):
             position = QPointF(self.width() * (0.1 + 0.8 * random.random()),

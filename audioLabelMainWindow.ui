@@ -76,26 +76,12 @@
            </spacer>
           </item>
           <item>
-           <widget class="QToolButton" name="toolButtonPlayBackMode">
-            <property name="text">
-             <string>...</string>
-            </property>
-            <property name="icon">
-             <iconset resource="resources.qrc">
-              <normaloff>:/icons/resources/loop.svg</normaloff>:/icons/resources/loop.svg</iconset>
-            </property>
-            <property name="iconSize">
-             <size>
-              <width>30</width>
-              <height>30</height>
-             </size>
-            </property>
-           </widget>
-          </item>
-          <item>
            <widget class="QToolButton" name="toolButtonStop">
             <property name="cursor">
              <cursorShape>PointingHandCursor</cursorShape>
+            </property>
+            <property name="toolTip">
+             <string>停止</string>
             </property>
             <property name="text">
              <string>...</string>
@@ -116,6 +102,9 @@
            <widget class="QToolButton" name="toolButtonPre">
             <property name="cursor">
              <cursorShape>PointingHandCursor</cursorShape>
+            </property>
+            <property name="toolTip">
+             <string>上一曲</string>
             </property>
             <property name="text">
              <string>...</string>
@@ -140,6 +129,9 @@
             <property name="cursor">
              <cursorShape>PointingHandCursor</cursorShape>
             </property>
+            <property name="toolTip">
+             <string>倒退5秒</string>
+            </property>
             <property name="text">
              <string>...</string>
             </property>
@@ -162,6 +154,9 @@
            <widget class="QToolButton" name="toolButtonPlayPause">
             <property name="cursor">
              <cursorShape>PointingHandCursor</cursorShape>
+            </property>
+            <property name="toolTip">
+             <string>播放</string>
             </property>
             <property name="text">
              <string>...</string>
@@ -186,6 +181,9 @@
             <property name="cursor">
              <cursorShape>PointingHandCursor</cursorShape>
             </property>
+            <property name="toolTip">
+             <string>前进5秒</string>
+            </property>
             <property name="text">
              <string>...</string>
             </property>
@@ -209,6 +207,9 @@
             <property name="cursor">
              <cursorShape>PointingHandCursor</cursorShape>
             </property>
+            <property name="toolTip">
+             <string>下一曲</string>
+            </property>
             <property name="text">
              <string>...</string>
             </property>
@@ -231,6 +232,9 @@
            <widget class="QToolButton" name="toolButtonVolume">
             <property name="cursor">
              <cursorShape>PointingHandCursor</cursorShape>
+            </property>
+            <property name="toolTip">
+             <string>静音</string>
             </property>
             <property name="text">
              <string>...</string>

@@ -22,7 +22,12 @@ class Toast(QtWidgets.QWidget):
 
         self.timer = QtCore.QTimer()
         self.timer.setSingleShot(True)
-        self.timer.timeout.connect(self.close)
+        self.timer.timeout.connect(self.hide)
+
+    @QtCore.Slot()
+    def on_timer_timeout(self):
+        self.timer.stop()
+        self.close()
 
     def init_UI(self):
         height = self.get_font_size() * 2
@@ -59,7 +64,8 @@ class Toast(QtWidgets.QWidget):
                          QtCore.Qt.AlignCenter, self.toast_text)
 
     def toast(self, pos: QtCore.QPoint, toast_text: str, duration: int = None, background_color: QtGui.QColor = None):
-        self.close()
+        self.hide()
+
         if pos:
             self.position = pos
         if toast_text:
